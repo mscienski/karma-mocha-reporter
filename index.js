@@ -18,6 +18,8 @@ var MochaReporter = function (baseReporterDecorator, formatError, config) {
     var self = this;
     var firstRun = true;
     var isRunCompleted = false;
+    var LOG_BROWSER = '%s %s\n';
+    var browserLogs = [];
 
     /**
      * Returns the text repeated n times.
@@ -318,7 +320,7 @@ var MochaReporter = function (baseReporterDecorator, formatError, config) {
         var length = keys.length;
         var i, item;
 
-        for (i = 0; i < length; i++) {
+        for (i = length - 1; i >= 0; i--) {
             item = suite[keys[i]];
 
             // start of a new suite
@@ -329,18 +331,12 @@ var MochaReporter = function (baseReporterDecorator, formatError, config) {
             // only print to output when test failed
             if (item.name && !item.success && !item.skipped) {
                 // indent
-                var line = repeatString('  ', depth) + item.name;
+                var line = repeatString('  ', depth) + ((item.type === 'it') ? ((i + 1) + ') ' + item.name) : item.name);
 
                 // it block
                 if (item.type === 'it') {
                     // make item name error
                     line = colors.error.print(line) + '\n';
-
-                    // add all browser in which the test failed with color warning
-                    for (var bi = 0; bi < item.failed.length; bi++) {
-                        var browserName = item.failed[bi];
-                        line += repeatString('  ', depth + 1) + chalk.italic(colors.warning.print(browserName)) + '\n';
-                    }
 
                     // add the error log in error color
                     item.log = item.log || [];
@@ -562,8 +558,6 @@ var MochaReporter = function (baseReporterDecorator, formatError, config) {
     };
 
     self.onRunComplete = function (browsers, results) {
-        results = results.reverse();
-
         browsers.forEach(function (browser) {
             self.totalTime += browser.lastResult.totalTime;
         });
@@ -605,11 +599,29 @@ var MochaReporter = function (baseReporterDecorator, formatError, config) {
                     printFailures(self.allResults);
                 }
             }
+
+            if (browserLogs.length > 0) {
+                self.write('\n' + chalk.underline.bold('CONSOLE LOGS') + '\n');
+                browserLogs.forEach(function(browserLog) {
+                    self.write(chalk.cyan(LOG_BROWSER), browserLog.type.toUpperCase(), browserLog.log);
+                });
+
+                browserLogs = [];
+            }
         }
 
         if (outputMode === 'autowatch') {
             outputMode = 'minimal';
         }
+    };
+
+    self.onBrowserLog = function(browser, log, type) {
+        browserLogs.push({
+            browser: browser,
+            log: log,
+            type: type
+        });
+        self.write(chalk.cyan(LOG_BROWSER), type.toUpperCase(), log);
     };
 };
 
