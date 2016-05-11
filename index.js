@@ -562,6 +562,8 @@ var MochaReporter = function (baseReporterDecorator, formatError, config) {
     };
 
     self.onRunComplete = function (browsers, results) {
+        results = results.reverse();
+
         browsers.forEach(function (browser) {
             self.totalTime += browser.lastResult.totalTime;
         });
